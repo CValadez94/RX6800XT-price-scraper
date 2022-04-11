@@ -17,7 +17,7 @@ def get_microcenter_data():
     # list = results.find_all('li')
     is_rebate = False
     is_on_sale = False
-    file = open("Test.html", 'r')
+    file = open("MC_Extract.html", 'r')
     contents = file.read()
     soup = BeautifulSoup(contents, "html.parser")
     items = soup.find_all("div", class_="details")
