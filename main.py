@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 from flask import Flask
 
 mc_data = dict()
-sku_ordered = []
+
 
 
 class GPU:
@@ -94,16 +94,11 @@ def get_microcenter_data():
         # Put data in dictionary
         if mc_data.get(sku) is None:  # Item does not exist in dictionary yet. Add it
             mc_data[sku] = GPU(brand, price, name, stock, link)
-            sku_ordered.append([sku, float(price.replace(',', ""))])
         else:
             # Update price and stock qty
             gpu = mc_data[sku]
             gpu.update(price, stock)
             mc_data[sku] = gpu
-            sku_ordered.append([sku, float(price.replace(',', ""))])
-
-    # Order the sku list by price
-    sku_ordered.sort(key=lambda sku_ordered:sku_ordered[1])
 
 
 def print_bestbuy():
@@ -117,6 +112,20 @@ def print_bestbuy():
     # file.close()
 
 
+def sort_skus_by_price(data):
+    sku_ordered = []
+    for d in data.keys():
+        price = data[d].get_current_price()
+        sku_ordered.append([d, float(price.replace(',', ""))])
+
+    # Order the sku list by price
+    sku_ordered.sort(key=lambda sku_ordered: sku_ordered[1])
+
+    # Flatten sku ordered list and then return list of skus ordered by price
+    flat_sku_ordered = sum(sku_ordered, [])
+    return flat_sku_ordered[0:len(flat_sku_ordered):2]
+
+
 if __name__ == '__main__':
     app = Flask(__name__)
 
@@ -125,9 +134,7 @@ if __name__ == '__main__':
         get_microcenter_data()
         p = "<p>" + datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S") + "</p>"
 
-        # Flatten sku ordered list and then print info ordered by price
-        flat_sku_ordered = sum(sku_ordered, [])
-        skus = flat_sku_ordered[0:len(flat_sku_ordered):2]
+        skus = sort_skus_by_price(mc_data)
         for key in skus:
             gpu = mc_data[key]
             p += "<p>" + "Price: <a href=\"" + gpu.get_link() + "\">$" + gpu.get_current_price() + "</a></br>"
