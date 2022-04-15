@@ -9,16 +9,18 @@ mc_data = dict()
 
 
 class GPU:
-    def __init__(self, brand, price, name, stock, link):
+    def __init__(self, brand, price, price_info, name, stock, link):
         self.brand = brand
         self.prices = [price]
+        self.prices_info = [price_info]
         self.timestamp = [datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S")]
         self.name = name
         self.stock = [stock]
         self.link = link
 
-    def update(self, price, stock):
+    def update(self, price, price_info, stock):
         self.prices.append(price)
+        self.prices_info.append(price_info)
         self.stock.append(stock)
         self.timestamp.append(datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S"))
 
@@ -27,6 +29,9 @@ class GPU:
 
     def get_current_stock(self):
         return self.stock[-1]
+
+    def get_current_price_info(self):
+        return self.prices_info[-1]
 
     def get_log_html(self):
         p = "<p>"
@@ -93,11 +98,11 @@ def get_microcenter_data():
 
         # Put data in dictionary
         if mc_data.get(sku) is None:  # Item does not exist in dictionary yet. Add it
-            mc_data[sku] = GPU(brand, price, name, stock, link)
+            mc_data[sku] = GPU(brand, price, price_info, name, stock, link)
         else:
             # Update price and stock qty
             gpu = mc_data[sku]
-            gpu.update(price, stock)
+            gpu.update(price, price_info, stock)
             mc_data[sku] = gpu
 
 
@@ -138,6 +143,7 @@ if __name__ == '__main__':
         for key in skus:
             gpu = mc_data[key]
             p += "<p>" + "Price: <a href=\"" + gpu.get_link() + "\">$" + gpu.get_current_price() + "</a></br>"
+            p += "Price Info: " + gpu.get_current_price_info() + "</br>"
             p += "Stock: " + gpu.get_current_stock() + "</br>"
             p += "Brand: " + gpu.brand + "</br>"
             p += "Name: " + gpu.name + "</br>"
