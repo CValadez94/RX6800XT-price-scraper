@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 from flask import Flask
 
 mc_data = dict()
+sku_ordered = []
 
 
 class GPU:
@@ -93,11 +94,16 @@ def get_microcenter_data():
         # Put data in dictionary
         if mc_data.get(sku) is None:  # Item does not exist in dictionary yet. Add it
             mc_data[sku] = GPU(brand, price, name, stock, link)
+            sku_ordered.append([sku, float(price.replace(',', ""))])
         else:
             # Update price and stock qty
             gpu = mc_data[sku]
             gpu.update(price, stock)
             mc_data[sku] = gpu
+            sku_ordered.append([sku, float(price.replace(',', ""))])
+
+    # Order the sku list by price
+    sku_ordered.sort(key=lambda sku_ordered:sku_ordered[1])
 
 
 def print_bestbuy():
@@ -118,7 +124,11 @@ if __name__ == '__main__':
     def display():
         get_microcenter_data()
         p = "<p>" + datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S") + "</p>"
-        for key in mc_data:
+
+        # Flatten sku ordered list and then print info ordered by price
+        flat_sku_ordered = sum(sku_ordered, [])
+        skus = flat_sku_ordered[0:len(flat_sku_ordered):2]
+        for key in skus:
             gpu = mc_data[key]
             p += "<p>" + "Price: <a href=\"" + gpu.get_link() + "\">$" + gpu.get_current_price() + "</a></br>"
             p += "Stock: " + gpu.get_current_stock() + "</br>"
