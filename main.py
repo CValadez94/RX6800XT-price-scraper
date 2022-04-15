@@ -56,7 +56,7 @@ def get_microcenter_data():
 
     print("Found {:d} at Microcenter".format(len(items)))
     for item in items:
-        stock = item.find("span", class_="inventoryCnt").text[0]
+        stock = item.find("span", class_="inventoryCnt").text
         details = item.find("a")
         price_wrapper = item.find("div", class_="price_wrapper")
         price_info = ""
