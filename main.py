@@ -4,9 +4,10 @@ import requests
 from bs4 import BeautifulSoup
 from flask import Flask
 
-mc_data = dict()
-
-
+data_6800XT = dict()
+data_6900XT = dict()
+url_6800XT = 'https://www.microcenter.com/search/search_results.aspx?Ntk=all&sortby=match&rpp=96&N=4294966937+4294820651+4294808485&myStore=true&storeid=025'
+url_6900XT = 'https://www.microcenter.com/search/search_results.aspx?N=4294966937+4294808442&NTK=all&sortby=pricelow&storeid=025'
 
 class GPU:
     def __init__(self, brand, price, price_info, name, stock, link):
@@ -44,21 +45,14 @@ class GPU:
         return self.link
 
 
-def get_microcenter_data():
+def get_microcenter_data(url, data):
     """
         Get's data related to a searched item from microcenter.com in Westmont, IL
     """
-    # Hardcode link for now
-    url = 'https://www.microcenter.com/search/search_results.aspx?Ntk=all&sortby=match&rpp=96&N=4294966937+4294820651+4294808485&myStore=true&storeid=025'
     page = requests.get(url)
     soup = BeautifulSoup(page.content, "html.parser")
     product_grid = soup.find(id="productGrid")
     items = product_grid.find_all("div", class_="details")
-    # list = results.find_all('li')
-    # file = open("MC_Extract.html", 'r')
-    # contents = file.read()
-    # soup = BeautifulSoup(contents, "html.parser")
-    # items = soup.find_all("div", class_="details")
 
     print("Found {:d} at Microcenter".format(len(items)))
     for item in items:
@@ -97,24 +91,13 @@ def get_microcenter_data():
         #       "Stock: {:s}\nPrice: {:s}".format(brand, sku, name, price_info, stock, price))
 
         # Put data in dictionary
-        if mc_data.get(sku) is None:  # Item does not exist in dictionary yet. Add it
-            mc_data[sku] = GPU(brand, price, price_info, name, stock, link)
+        if data.get(sku) is None:  # Item does not exist in dictionary yet. Add it
+            data[sku] = GPU(brand, price, price_info, name, stock, link)
         else:
             # Update price and stock qty
-            gpu = mc_data[sku]
+            gpu = data[sku]
             gpu.update(price, price_info, stock)
-            mc_data[sku] = gpu
-
-
-def print_bestbuy():
-    url = 'https://www.bestbuy.com/'
-    user_agent = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/' \
-                                '20100101 Firefox/83.0'}
-    page = requests.get(url, user_agent)
-    print(page.status_code)
-    # file = open("BB_Extract.html", 'w')
-    # file.write(page.text)
-    # file.close()
+            data[sku] = gpu
 
 
 def sort_skus_by_price(data):
@@ -131,36 +114,44 @@ def sort_skus_by_price(data):
     return flat_sku_ordered[0:len(flat_sku_ordered):2]
 
 
+def display_gpu_data(data):
+    p = "<p>" + datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S") + "</p>"
+    skus = sort_skus_by_price(data)
+    for key in skus:
+        gpu = data[key]
+        p += "<p>" + "Price: <a href=\"" + gpu.get_link() + "\">$" + gpu.get_current_price() + "</a></br>"
+        p += "Price Info: " + gpu.get_current_price_info() + "</br>"
+        p += "Stock: " + gpu.get_current_stock() + "</br>"
+        p += "Brand: " + gpu.brand + "</br>"
+        p += "Name: " + gpu.name + "</br>"
+        p += "<p>=====================================</p>"
+    return p
+
+
 if __name__ == '__main__':
     app = Flask(__name__)
 
-    @app.route("/")
-    def display():
-        get_microcenter_data()
-        p = "<p>" + datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S") + "</p>"
+    @app.route("/6800XT")
+    def display6800XT():
+        get_microcenter_data(url_6800XT, data_6800XT)
+        return display_gpu_data(data_6800XT)
 
-        skus = sort_skus_by_price(mc_data)
-        for key in skus:
-            gpu = mc_data[key]
-            p += "<p>" + "Price: <a href=\"" + gpu.get_link() + "\">$" + gpu.get_current_price() + "</a></br>"
-            p += "Price Info: " + gpu.get_current_price_info() + "</br>"
-            p += "Stock: " + gpu.get_current_stock() + "</br>"
-            p += "Brand: " + gpu.brand + "</br>"
-            p += "Name: " + gpu.name + "</br>"
-            p += "<p>=====================================</p>"
-        return p
+    @app.route("/6900XT")
+    def display6900XT():
+        get_microcenter_data(url_6900XT, data_6900XT)
+        return display_gpu_data(data_6900XT)
 
-    @app.route("/cheapest")
-    def display_cheapest():
-        get_microcenter_data()
-        cheapest_price = None
-        cheapest_sku = 0
-        for key in mc_data:
-            gpu = mc_data[key]
-            gpu_price = float(gpu.get_current_price().replace(',', ''))
-            if cheapest_price is None or (gpu_price < cheapest_price):
-                cheapest_price = gpu_price
-                cheapest_sku = key
+    # @app.route("/cheapest")
+    # def display_cheapest():
+    #     get_microcenter_data()
+    #     cheapest_price = None
+    #     cheapest_sku = 0
+    #     for key in mc_data:
+    #         gpu = mc_data[key]
+    #         gpu_price = float(gpu.get_current_price().replace(',', ''))
+    #         if cheapest_price is None or (gpu_price < cheapest_price):
+    #             cheapest_price = gpu_price
+    #             cheapest_sku = key
 
         cheapest_gpu = mc_data[cheapest_sku]
         p = "<p><a href=\"" + cheapest_gpu.get_link() + "\">Cheapest GPU</a>" + " log:</p>"
@@ -169,4 +160,3 @@ if __name__ == '__main__':
 
 
     app.run(host='0.0.0.0', port=5000, debug=True)
-    # print_bestbuy()
