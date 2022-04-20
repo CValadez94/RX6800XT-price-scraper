@@ -9,6 +9,7 @@ data_6900XT = dict()
 url_6800XT = 'https://www.microcenter.com/search/search_results.aspx?Ntk=all&sortby=match&rpp=96&N=4294966937+4294820651+4294808485&myStore=true&storeid=025'
 url_6900XT = 'https://www.microcenter.com/search/search_results.aspx?N=4294966937+4294808442&NTK=all&sortby=pricelow&storeid=025'
 
+
 class GPU:
     def __init__(self, brand, price, price_info, name, stock, link):
         self.brand = brand
@@ -37,7 +38,7 @@ class GPU:
     def get_log_html(self):
         p = "<p>"
         for i in range(len(self.prices)):
-            p += self.timestamp[-i-1] + " :: $" + self.prices[-i-1] + " Stock: " + self.stock[-i-1] + "</br>"
+            p += self.timestamp[-i - 1] + " :: $" + self.prices[-i - 1] + " Stock: " + self.stock[-i - 1] + "</br>"
         p += "</p>"
         return p
 
@@ -54,7 +55,6 @@ def get_microcenter_data(url, data):
     product_grid = soup.find(id="productGrid")
     items = product_grid.find_all("div", class_="details")
 
-    print("Found {:d} at Microcenter".format(len(items)))
     for item in items:
         stock = item.find("span", class_="inventoryCnt").text
         details = item.find("a")
@@ -119,43 +119,68 @@ def display_gpu_data(data):
     skus = sort_skus_by_price(data)
     for key in skus:
         gpu = data[key]
-        p += "<p>" + "Price: <a href=\"" + gpu.get_link() + "\">$" + gpu.get_current_price() + "</a></br>"
+        gpu_current_stock = gpu.get_current_stock()
+
+        # Highlight text in red if out of stock
+        if gpu_current_stock[0] == '0':
+            style = 'color:red'
+        else:
+            style = 'color:black'
+
+        p += "<p style=\"" + style + "\">"
+        p += "Price: <a href=\"" + gpu.get_link() + "\">$" + gpu.get_current_price() + "</a></br>"
         p += "Price Info: " + gpu.get_current_price_info() + "</br>"
-        p += "Stock: " + gpu.get_current_stock() + "</br>"
+        p += "Stock: " + gpu_current_stock + "</br>"
         p += "Brand: " + gpu.brand + "</br>"
         p += "Name: " + gpu.name + "</br>"
+        p += "Internal SKU: " + key + "</br>"
         p += "<p>=====================================</p>"
     return p
 
 
+def get_sku_log(sku, dictionaries):
+    # Check dictionaries for the sku
+    for data in dictionaries:
+        if sku in data:
+            gpu = data[sku]
+            p = '<p><a href=\"' + gpu.get_link() + '\">GPU: ' + sku + '</a></br>'
+            p += 'Brand: ' + gpu.brand + ' Name: ' + gpu.name + '</p>'
+            p += gpu.get_log_html()
+            return p
+    # At this point, sku was not found, return not found code -1
+    return '-1'
+
+
 if __name__ == '__main__':
     app = Flask(__name__)
+
 
     @app.route("/6800XT")
     def display6800XT():
         get_microcenter_data(url_6800XT, data_6800XT)
         return display_gpu_data(data_6800XT)
 
+
     @app.route("/6900XT")
     def display6900XT():
         get_microcenter_data(url_6900XT, data_6900XT)
         return display_gpu_data(data_6900XT)
 
-    # @app.route("/cheapest")
-    # def display_cheapest():
-    #     get_microcenter_data()
-    #     cheapest_price = None
-    #     cheapest_sku = 0
-    #     for key in mc_data:
-    #         gpu = mc_data[key]
-    #         gpu_price = float(gpu.get_current_price().replace(',', ''))
-    #         if cheapest_price is None or (gpu_price < cheapest_price):
-    #             cheapest_price = gpu_price
-    #             cheapest_sku = key
 
-        cheapest_gpu = mc_data[cheapest_sku]
-        p = "<p><a href=\"" + cheapest_gpu.get_link() + "\">Cheapest GPU</a>" + " log:</p>"
-        p += cheapest_gpu.get_log_html()
+    @app.route("/sku/<sku>")
+    def sku_log(sku):
+        # Update dictionaries
+        get_microcenter_data(url_6800XT, data_6800XT)
+        get_microcenter_data(url_6900XT, data_6900XT)
+
+        p = "<p>" + datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S") + "</p>"
+        r = get_sku_log(sku, [data_6800XT, data_6900XT])   # Search if sku exists in any of dictionaries and get log
+        if r == '-1':   # SKU was not found
+            # If this point is reached, key was not found
+            p += '<p> Internal sku not found in my dictionaries</p>'
+        else:
+            p += r
+
         return p
 
 
